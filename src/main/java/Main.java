@@ -1,21 +1,44 @@
+import java.util.List;
+import java.util.concurrent.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
 public class Main {
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException, ExecutionException {
 
-        ThreadGroup mainGroup = new ThreadGroup("Главный поток");
+        ExecutorService trheadPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
-        System.out.println("Создаю потоки...");
-        MyThread myThread1 = new MyThread(mainGroup, "Поток 1");
-        MyThread myThread2 = new MyThread(mainGroup, "Поток 2");
-        MyThread myThread3 = new MyThread(mainGroup, "Поток 3");
-        MyThread myThread4 = new MyThread(mainGroup, "Поток 4");
+        List<Callable<String>> callables = createCallables(4);
 
-        myThread1.start();
-        myThread2.start();
-        myThread3.start();
-        myThread4.start();
+        forInvokeAll(trheadPool, callables);
+//        forInvokeAny(trheadPool, callables);
+    }
 
-        Thread.sleep(10000);
-        mainGroup.interrupt();
+    private static void forInvokeAny(ExecutorService trheadPool, List<Callable<String>> callables)
+            throws ExecutionException, InterruptedException {
+        String firstSuccessfullyTask = trheadPool.invokeAny(callables);
+
+        trheadPool.shutdown();
+
+        System.out.println("Результат самой успешной задачи: " + firstSuccessfullyTask);
+    }
+
+    private static void forInvokeAll(ExecutorService trheadPool, List<Callable<String>> callables)
+            throws InterruptedException, ExecutionException {
+        List<Future<String>> futures = trheadPool.invokeAll(callables);
+
+        trheadPool.shutdown();
+
+        System.out.println("Результат всех задач:");
+        for (Future<String> future : futures) {
+            System.out.println(future.get());
+        }
+    }
+
+    private static List<Callable<String>> createCallables(int amount) {
+        return IntStream.range(0, amount)
+                .mapToObj(i -> new MyCallable())
+                .collect(Collectors.toList());
     }
 }
